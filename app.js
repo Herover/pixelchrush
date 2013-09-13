@@ -18,7 +18,7 @@
         fs              = require('fs'),
         //app             = express(),
         server          = http.createServer(app),
-        //io              = require('so.io').listen(server),
+        //io              = require('socket.io').listen(server),
         app = http.createServer(function(request, response) {//https://gist.github.com/webgio/4573344
 
           var uri = url.parse(request.url).pathname,
@@ -52,7 +52,7 @@
             });
           });
         }).listen(gameport),
-        io              = require('so.io').listen(app);
+        io              = require('socket.io').listen(app);
  
     var Boxie = require("./pub/boxie.js");
 
@@ -71,7 +71,7 @@
               continue;
             }
             var p = game.objects[i];
-            /*if(typeof player == "object" && pl.id==p.id){
+            /*if(typeof player == "object" && player.id==p.id){
                 continue;
             }*/
             pls[game.objects[i].id]={pos: p.pos, settings: p.settings};
@@ -173,15 +173,15 @@
           }
           var pwr = Server.powers[Math.floor(Math.random()*Server.powers.length)];
           console.log(pwr);
-          best.so.emit("pwr",pwr.name);
+          best.socket.emit("pwr",pwr.name);
           game.svars.pwr = pwr;
           game.svars.pwrto = best;
         }
       }
     });
 
-        //Configure the so.io connection settings.
-        //See http://so.io/
+        //Configure the socket.io connection settings.
+        //See http://socket.io/
     io.configure(function (){
 
         io.set('log level', 0);
@@ -192,60 +192,60 @@
 
     });
 
-    io.sockets.on('connection', function (so) {
-      so.emit("OK");
+    io.sockets.on('connection', function (socket) {
+      socket.emit("OK");
       console.log("New dude");
-      so.on("activate",function(data){
+      socket.on("activate",function(data){
         console.log("activate",data);
         //if(typeof data.name=="string"){
           var name = data.name.replace(["<",">"],["&lt;","&gt"]);
         /*}else{
           return false;
         }*/
-        var pl = so.player = new Boxie.Man(
+        var player = socket.player = new Boxie.Man(
           false,
           {color: Server.generateColor(numberOfPlayers),name:name,points:0}
         );
-        pl.pos = Server.getSpawnPos(game);
+        player.pos = Server.getSpawnPos(game);
         game.addObject(player);
-        pl.socket = socket;
+        player.socket = socket;
 
-        pl.listen("drag",function(data){
-          //pl.boxie.move(data.a,data.b);
+        player.listen("drag",function(data){
+          //player.boxie.move(data.a,data.b);
           console.log("drag");
-          so.broadcast.emit("swapb",{a:data.a, b:data.b});
+          socket.broadcast.emit("swapb",{a:data.a, b:data.b});
         });
-        pl.listen("push",function(data){
-          //pl.boxie.move(data.a,data.b);
+        player.listen("push",function(data){
+          //player.boxie.move(data.a,data.b);
           io.sockets.emit("swapb",{a:data.a, b:data.b});
           console.log("push");
         });
-        pl.listen("die", function(reason){
-          //console.log("die",pl.id,reason.player);
-          pl.settings.points = 0;
-          so.broadcast.emit("die",{id: pl.id, reason:reason});
-          so.emit("die",{id: pl.id, reason:reason});
+        player.listen("die", function(reason){
+          //console.log("die",player.id,reason.player);
+          player.settings.points = 0;
+          socket.broadcast.emit("die",{id: player.id, reason:reason});
+          socket.emit("die",{id: player.id, reason:reason});
         });
 
         numberOfPlayers++;
 
-        so.emit('self', { id: pl.id, pos: pl.pos, settings: pl.settings });
-        so.emit('game', { world: game.world });
-        so.broadcast.emit("")
-        so.on("move",function(data){
-          pl.move(data.pos,data.push);
-          so.broadcast.emit("pp",{id:pl.id, pos: pl.pos});
-          so.emit("move",pl.pos);
+        socket.emit('self', { id: player.id, pos: player.pos, settings: player.settings });
+        socket.emit('game', { world: game.world });
+        socket.broadcast.emit("")
+        socket.on("move",function(data){
+          player.move(data.pos,data.push);
+          socket.broadcast.emit("pp",{id:player.id, pos: player.pos});
+          socket.emit("move",player.pos);
         });
-        so.on("respawn",function(data){
-          pl.pos = Server.getSpawnPos(game);
-          pl.settings.dead = 0;
-          io.sockets.emit("respawn",{id:pl.id, pos: pl.pos});
+        socket.on("respawn",function(data){
+          player.pos = Server.getSpawnPos(game);
+          player.settings.dead = 0;
+          io.sockets.emit("respawn",{id:player.id, pos: player.pos});
           //Server.sendPlayerList(game);
         });
-        so.on("pwr",function(){
-          console.log("pwr",game.svars.pwrto.id,pl.id);
-          if(game.svars.pwrtime+Server.powerInterval<new Date().getTime() && game.svars.pwrto.id == pl.id){
+        socket.on("pwr",function(){
+          console.log("pwr",game.svars.pwrto.id,player.id);
+          if(game.svars.pwrtime+Server.powerInterval<new Date().getTime() && game.svars.pwrto.id == player.id){
             io.sockets.emit('rotate');
             game.svars.pwrtime = new Date().getTime();
             setTimeout(function(){
@@ -255,13 +255,13 @@
             }, 1500);
           }
         });
-        so.on("game", function(){
-          so.emit('game', { world: game.world });
+        socket.on("game", function(){
+          socket.emit('game', { world: game.world });
         });
-        so.on("hash", function(){
-          so.emit('hash', game.hash());
+        socket.on("hash", function(){
+          socket.emit('hash', game.hash());
         });
-        so.on("objects", function(){
+        socket.on("objects", function(){
           Server.sendPlayerList(game);
         });
 
@@ -273,18 +273,18 @@
           ];
         }while(!game.isEmpty(startpos));
         console.log("new pos",startpos);
-        pl.pos=startpos;*/
+        player.pos=startpos;*/
 
         Server.sendPlayerList(game);
 
-        so.on("disconnect",function(){
-          delete game.objects[pl.id];
-          console.log("DELETED",pl.id);
+        socket.on("disconnect",function(){
+          delete game.objects[player.id];
+          console.log("DELETED",player.id);
           console.log("PLayers right now: "+Server.getNumberOfPlayers());
           Server.sendPlayerList(game);
         });
 
-        so.on("admin",function(data){
+        socket.on("admin",function(data){
           console.log("admin command:",data)
           if(typeof data.act==undefined){
             return false;
