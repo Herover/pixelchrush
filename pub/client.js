@@ -22,7 +22,8 @@
   })();
   function addMessage(txt,color){
     var item = d.createElement("li");
-    item.appendChild(item.ownerd.createTextNode(txt));
+    console.log(item);
+    item.appendChild(item.ownerDocument.createTextNode(txt));
     item.style.setProperty("color",color);
     e_messages.insertBefore(item,e_messages.firstChild);
   }
